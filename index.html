@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영어 워크시트 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#1E2A38;
+  --sidebar:#16324F;
+  --sidebar-2:#1D4265;
+  --amber:#F2B441;
+  --teal:#2F8F86;
+  --paper-app:#EDEAE2;
+  --line:#D8D3C6;
+  --cover-font:24px;
+  --guide-font:16px;
+  --word-font:16px;
+  --sentence-font:17px;
+  --review-font:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Noto Sans KR',sans-serif;color:var(--ink);background:var(--paper-app);}
+.app{display:flex;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{width:320px;flex:none;background:var(--sidebar);color:#EAF1F6;padding:28px 22px 60px;overflow-y:auto;}
+.brand{font-family:'Poppins',sans-serif;font-weight:800;font-size:20px;letter-spacing:.2px;margin-bottom:4px;}
+.brand span{color:var(--amber);}
+.brand-sub{font-size:12px;color:#9FB7C9;margin-bottom:26px;}
+.field{margin-bottom:20px;}
+.field label{display:block;font-size:12.5px;font-weight:700;color:#BFD6E4;margin-bottom:7px;}
+.field input[type=text],
+.field input[type=date],
+.field textarea{
+  width:100%;padding:9px 10px;border-radius:6px;border:1px solid #2C5678;
+  background:#0F273D;color:#EAF1F6;font-family:inherit;font-size:13.5px;
+}
+.field textarea{resize:vertical;min-height:60px;}
+.field input[type=file]{width:100%;font-size:12.5px;color:#EAF1F6;}
+.hint{font-size:11px;color:#8AA5B8;margin-top:6px;line-height:1.5;}
+.section-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);font-weight:700;margin:26px 0 12px;border-top:1px solid #2C5678;padding-top:18px;}
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.slider-row label{flex:1;font-size:12.5px;color:#D9E7EF;margin:0;}
+.slider-row input[type=range]{flex:1.2;accent-color:var(--amber);}
+.slider-row .val{width:34px;text-align:right;font-size:12px;color:#9FB7C9;}
+.btn{
+  width:100%;padding:12px 14px;border:none;border-radius:8px;font-weight:700;font-size:14px;
+  cursor:pointer;margin-top:8px;font-family:inherit;
+}
+.btn-primary{background:var(--amber);color:#20283A;}
+.btn-primary:hover{background:#e5a52f;}
+.btn-secondary{background:#0F273D;color:#EAF1F6;border:1px solid #2C5678;}
+.btn-secondary:hover{background:#173654;}
+.status{font-size:12px;margin-top:10px;color:#9FB7C9;min-height:16px;}
+.status.err{color:#F2A0A0;}
+.status.ok{color:#8CE0C9;}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0;}
+.toolbar{
+  position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);
+  padding:14px 26px;display:flex;align-items:center;justify-content:space-between;
+}
+.toolbar h1{font-size:15px;margin:0;font-weight:700;color:var(--ink);}
+.toolbar .count{font-size:12.5px;color:#7C7566;}
+.preview-wrap{padding:30px 0 80px;overflow-x:auto;}
+#preview{display:flex;flex-direction:column;align-items:center;gap:22px;}
+.empty-state{
+  margin:80px auto;max-width:420px;text-align:center;color:#8A8471;font-size:14px;line-height:1.7;
+}
+
+/* ---------- Page (A4 Strict) ---------- */
+.page{
+  width:210mm;
+  height:297mm;
+  background:#fff;
+  padding:14mm 16mm 16mm;
+  box-shadow:0 4px 18px rgba(0,0,0,.16);
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.page-top-row{display:flex;justify-content:space-between;align-items:baseline;}
+.page .p-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;margin:0 0 2px;color:var(--ink);}
+.page .p-sub{font-size:12px;color:#8A8471;margin:0 0 10px;}
+.page .day-label{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;color:var(--teal);}
+.divider{border:none;border-top:2px solid var(--teal);margin:6px 0 12px;flex-shrink:0;}
+
+/* Cover */
+.cover{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:var(--cover-font);height:100%;}
+.cover .kicker{font-size:13px;letter-spacing:.12em;color:var(--teal);font-weight:700;margin-bottom:14px;}
+.cover h1{font-family:'Poppins',sans-serif;font-weight:800;font-size:2.2em;margin:0 0 40px;color:var(--ink);}
+.cover .line-row{display:flex;gap:14px;align-items:baseline;margin:14px 0;width:80%;justify-content:center;}
+.cover .line-row .cap{font-weight:700;color:var(--ink);min-width:90px;text-align:right;}
+.cover .line-row .blank{flex:1;border-bottom:1.5px solid var(--ink);min-width:180px;padding-bottom:4px;font-weight:700;}
+
+/* Guide */
+.guide{font-size:var(--guide-font);height:100%;display:flex;flex-direction:column;}
+.notice-box{border:1.5px solid var(--ink);border-radius:8px;padding:12px 14px;margin-top:auto;margin-bottom:10px;background:#FBF9F4;}
+.notice-box b{color:#B23A3A;}
+.notice-extra{margin-top:8px;padding:10px 14px;border-left:4px solid var(--amber);background:#FFF8E9;white-space:pre-wrap;line-height:1.5;}
+table.cal{width:100%;border-collapse:collapse;margin-bottom:10px;}
+table.cal caption{text-align:left;font-weight:700;font-size:1.0em;margin-bottom:4px;color:var(--teal);}
+table.cal th,table.cal td{border:1px solid var(--line);text-align:center;padding:4px 2px;width:14.28%;vertical-align:top;height:36px;}
+table.cal th{background:#F3F1EA;font-size:.8em;color:#8A8471;}
+table.cal td .d{font-size:.8em;color:#B7B09E;}
+table.cal td.wk{background:#fff;}
+table.cal td.we{background:#F6F5F1;color:#C8C2B2;}
+table.cal td .day-tag{display:block;margin-top:1px;font-weight:700;color:var(--teal);font-size:.75em;}
+
+/* Word / Sentence worksheets */
+.ws{font-size:var(--word-font);height:100%;display:flex;flex-direction:column;}
+.ws.sentence{font-size:var(--sentence-font);}
+.ws.review{font-size:var(--review-font);}
+.block-title{font-weight:700;color:var(--teal);font-size:1.0em;margin:10px 0 6px;flex-shrink:0;}
+.block-title:first-of-type{margin-top:0;}
+.word-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
+.word-item .idx{width:18px;color:#8A8471;font-size:.85em;}
+.tok{display:inline-block;border:1.5px solid var(--ink);border-radius:4px;padding:1px 4px;margin-right:2px;font-weight:700;background:#fff;font-size:0.95em;}
+.letters .tok{padding:1px 3px;min-width:.9em;text-align:center;}
+.ans-line{flex:1;min-width:120px;border-bottom:1.4px solid #B7B09E;height:1.1em;}
+
+/* 단어 5회 쓰기 스타일 수정: 숫자 삭제, 간격 넓힘, 밑줄 길이 늘림 */
+.trace-item{margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.trace-item .model{font-weight:700;width:120px;font-size:.95em;}
+.trace-lines{display:flex;gap:10px;flex-wrap:wrap;}
+.trace-cell{width:75px;height:22px;border-bottom:1.4px solid #B7B09E;}
+
+/* 센텐스 스크램블 옆에 바로 밑줄 제공 */
+.qa-block{margin-bottom:10px;display:flex;flex-direction:column;gap:6px;}
+.q-row, .a-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+.q-toks, .a-toks{display:flex;align-items:center;flex-wrap:wrap;}
+.inline-line{flex:1;min-width:200px;border-bottom:1.4px solid #B7B09E;height:1.2em;}
+
+.word-bank{background:#F8F6F0;border:1px solid var(--line);border-radius:6px;padding:5px 8px;margin-bottom:8px;font-size:.85em;flex-shrink:0;}
+.word-bank-title{font-weight:700;color:var(--teal);margin-bottom:2px;}
+.word-bank-items{color:#444;line-height:1.3;}
+
+@media print{
+  body{background:#fff;}
+  .sidebar,.toolbar{display:none;}
+  .preview-wrap{padding:0;}
+  .page{box-shadow:none;margin:0;page-break-after:always;page-break-inside:avoid;}
+  #preview{gap:0;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">영어 워크시트 <span>메이커</span></div>
+    <div class="brand-sub">엑셀 업로드 → 자동 생성 → 워드 파일로 저장</div>
+
+    <div class="field">
+      <label>반 이름</label>
+      <input type="text" id="className" placeholder="예: C4A">
+    </div>
+
+    <div class="field">
+      <label>시작 날짜 (안내문 달력)</label>
+      <input type="date" id="startDate">
+      <div class="hint">지정한 날짜부터 평일(월~금)에만 하루 1페이지씩 배정한 달력이 안내문에 표시됩니다.</div>
+    </div>
+
+    <div class="field">
+      <label>안내문 추가 안내 문구</label>
+      <textarea id="extraNotice" placeholder="예: 매일 정해진 분량을 학습한 뒤 보호자 확인 서명을 받아주세요."></textarea>
+    </div>
+
+    <div class="section-title">폰트 크기 조절</div>
+    <div class="slider-row"><label>표지</label><input type="range" min="16" max="36" value="24" id="fs-cover"><span class="val" id="fs-cover-val">24</span></div>
+    <div class="slider-row"><label>안내문</label><input type="range" min="12" max="22" value="16" id="fs-guide"><span class="val" id="fs-guide-val">16</span></div>
+    <div class="slider-row"><label>단어 워크시트</label><input type="range" min="12" max="24" value="16" id="fs-word"><span class="val" id="fs-word-val">16</span></div>
+    <div class="slider-row"><label>문장 워크시트</label><input type="range" min="12" max="24" value="17" id="fs-sentence"><span class="val" id="fs-sentence-val">17</span></div>
+    <div class="slider-row"><label>리뷰 페이퍼</label><input type="range" min="12" max="22" value="16" id="fs-review"><span class="val" id="fs-review-val">16</span></div>
+
+    <div class="section-title">엑셀 업로드</div>
+    <div class="field">
+      <label>유닛 파일 (.xlsx)</label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="hint">한 시트 = 한 유닛. 질문과 답변 구문이 자동으로 인식됩니다.</div>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="section-title">내보내기</div>
+    <button class="btn btn-secondary" id="btnPrint">🖨 인쇄 미리보기</button>
+    <button class="btn btn-primary" id="btnExport">📄 수정 가능한 워드 파일로 저장</button>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div class="toolbar">
+      <h1>미리보기 (A4)</h1>
+      <div class="count" id="pageCount"></div>
+    </div>
+    <div class="preview-wrap">
+      <div id="preview">
+        <div class="empty-state">왼쪽에서 반 이름과 시작 날짜를 입력하고<br>엑셀 파일을 업로드하면 워크시트가 이곳에 자동으로 만들어집니다.</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ===================== STATE ===================== */
+const state = {
+  units: [],        
+  fontSizes: {cover:24, guide:16, word:16, sentence:17, review:16}
+};
+
+/* ===================== UTIL ===================== */
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function scrambleItem(text){
+  const clean = text.trim();
+  const parts = clean.split(/\s+/);
+  if(parts.length > 1){
+    let out = parts, tries = 0;
+    while(out.join(' ') === parts.join(' ') && tries < 20){ out = shuffle(parts); tries++; }
+    return out;
+  }
+  const letters = clean.split('');
+  if(letters.length < 2) return letters;
+  let out = letters, tries = 0;
+  while(out.join('') === letters.join('') && tries < 20){ out = shuffle(letters); tries++; }
+  return out;
+}
+function scrambleSentence(text){
+  const clean = text.trim();
+  const tokens = clean.split(/\s+/);
+  if(tokens.length < 2) return tokens;
+  let out = tokens, tries = 0;
+  while(out.join(' ') === tokens.join(' ') && tries < 20){ out = shuffle(tokens); tries++; }
+  return out;
+}
+function tokBoxes(tokens, cls){
+  return `<span class="${cls||''}">` + tokens.map(t=>`<span class="tok">${escapeHtml(t)}</span>`).join('') + `</span>`;
+}
+
+/* ===================== EXCEL PARSING ===================== */
+const QUESTION_START = /^(what|why|where|who|how|when|which|do|does|did|is|are|can|will|should|whose)\b/i;
+function isQuestionLine(text){
+  return text.includes('?') || QUESTION_START.test(text.trim());
+}
+
+function parseWorkbook(arrayBuffer){
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const units = [];
+  wb.SheetNames.forEach(sheetName => {
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+    const cells = rows.map(r => (r && r[0] != null) ? String(r[0]).trim() : '').filter(v => v.length > 0);
+    if(cells.length === 0) return;
+
+    let splitIdx = cells.findIndex(v => isQuestionLine(v));
+    if(splitIdx === -1) splitIdx = cells.length;
+
+    const words = cells.slice(0, splitIdx);
+    const rest = cells.slice(splitIdx);
+
+    const blocks = [];
+    let current = null;
+    rest.forEach(line => {
+      if(isQuestionLine(line)){
+        current = {question: line, answers: []};
+        blocks.push(current);
+      } else {
+        if(!current){ current = {question:'', answers:[]}; blocks.push(current); }
+        current.answers.push(line);
+      }
+    });
+
+    units.push({title: sheetName, words, blocks});
+  });
+  return units;
+}
+
+/* ===================== PAGE BUILDERS ===================== */
+function pageDiv(innerHtml, extraClass, styleVar){
+  const style = styleVar ? ` style="font-size:${styleVar}"` : '';
+  return `<div class="page ${extraClass||''}"${style}>${innerHtml}</div>`;
+}
+
+function renderCover(){
+  const className = document.getElementById('className').value.trim() || '________________';
+  const html = `
+    <div class="cover">
+      <div class="kicker">ENGLISH WORKBOOK</div>
+      <h1>English Worksheet</h1>
+      <div class="line-row"><span class="cap">Class</span><span class="blank">${escapeHtml(className)}</span></div>
+      <div class="line-row"><span class="cap">Name</span><span class="blank">&nbsp;</span></div>
+    </div>`;
+  return pageDiv(html, 'cover-page', `var(--cover-font)`);
+}
+
+function getWeekdaySequence(startDateStr, count){
+  const dates = [];
+  if(!startDateStr) return dates;
+  let d = new Date(startDateStr + 'T00:00:00');
+  while(d.getDay() === 0 || d.getDay() === 6){ d.setDate(d.getDate()+1); }
+  while(dates.length < count){
+    const day = d.getDay();
+    if(day !== 0 && day !== 6) dates.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  return dates;
+}
+
+function renderCalendar(dates){
+  if(dates.length === 0) return '<p class="hint" style="color:#8A8471;">시작 날짜를 지정하면 학습 달력이 표시됩니다.</p>';
+  const dayMap = new Map();
+  dates.forEach((d,i) => dayMap.set(d.toDateString(), i+1));
+
+  const first = dates[0], last = dates[dates.length-1];
+  const months = [];
+  let cur = new Date(first.getFullYear(), first.getMonth(), 1);
+  const end = new Date(last.getFullYear(), last.getMonth(), 1);
+  while(cur <= end){ months.push(new Date(cur)); cur.setMonth(cur.getMonth()+1); }
+
+  const names = ['일','월','화','수','목','금','토'];
+  let out = '';
+  months.forEach(m => {
+    const y = m.getFullYear(), mo = m.getMonth();
+    const daysInMonth = new Date(y, mo+1, 0).getDate();
+    const firstWeekday = new Date(y, mo, 1).getDay();
+    out += `<table class="cal"><caption>${y}년 ${mo+1}월</caption><thead><tr>${names.map(n=>`<th>${n}</th>`).join('')}</tr></thead><tbody><tr>`;
+    for(let i=0;i<firstWeekday;i++) out += '<td class="we"></td>';
+    let col = firstWeekday;
+    for(let day=1; day<=daysInMonth; day++){
+      const dt = new Date(y, mo, day);
+      const isWeekend = dt.getDay()===0 || dt.getDay()===6;
+      const tag = dayMap.get(dt.toDateString());
+      out += `<td class="${isWeekend?'we':'wk'}"><span class="d">${day}</span>${tag ? `<span class="day-tag">Day ${tag}</span>` : ''}</td>`;
+      col++;
+      if(col % 7 === 0 && day !== daysInMonth) out += '</tr><tr>';
+    }
+    while(col % 7 !== 0){ out += '<td class="we"></td>'; col++; }
+    out += '</tr></tbody></table>';
+  });
+  return out;
+}
+
+function renderGuide(totalPages){
+  const start = document.getElementById('startDate').value;
+  const extra = document.getElementById('extraNotice').value.trim();
+  const dates = getWeekdaySequence(start, totalPages);
+  const html = `
+    <div class="guide">
+      <div>
+        <p class="p-title">학습 안내</p>
+        <p class="p-sub">평일(월~금) 기준, 하루 1페이지씩 진행합니다. (총 ${totalPages}페이지)</p>
+        <hr class="divider">
+        ${renderCalendar(dates)}
+      </div>
+      <div class="notice-box">
+        <b>[교재 관리 안내]</b> 본 교재를 분실할 경우 <b>재발급이 불가</b>합니다. 매 페이지를 꼼꼼히 확인하고 소중히 보관해 주세요.
+        ${extra ? `<div class="notice-extra">${escapeHtml(extra)}</div>` : ''}
+      </div>
+    </div>`;
+  return pageDiv(html, 'guide-page', `var(--guide-font)`);
+}
+
+function renderWordPage(unitTitle, words, dayNum){
+  const scrambled = words.map(w => scrambleItem(w));
+  const wordBankHtml = words.length > 0 ? `
+    <div class="word-bank">
+      <div class="word-bank-title">Word Bank</div>
+      <div class="word-bank-items">${words.map(w => escapeHtml(w)).join('   •   ')}</div>
+    </div>` : '';
+
+  const scrambleList = words.map((w,i) => `
+      <div class="word-item">
+        <span class="idx">${i+1}</span>
+        ${tokBoxes(scrambled[i], 'letters')}
+        <span class="ans-line"></span>
+      </div>`).join('');
+
+  // 단어 5회 쓰기: 번호(idx) 제거, 빈칸 넓힘
+  const traceList = words.map((w) => `
+      <div class="trace-item">
+        <span class="model">${escapeHtml(w)}</span>
+        <div class="trace-lines">
+          ${[1,2,3,4,5].map(()=>`<div class="trace-cell"></div>`).join('')}
+        </div>
+      </div>`).join('');
+  
+  const html = `
+    <div class="ws">
+      <div class="page-top-row">
+        <div>
+          <p class="p-title">${escapeHtml(unitTitle)}</p>
+          <p class="p-sub">Spelling Practice</p>
+        </div>
+        <div class="day-label">Day ${dayNum}</div>
+      </div>
+      <hr class="divider">
+      <div class="block-title">Unscramble the letters and write each word correctly.</div>
+      ${wordBankHtml}
+      ${scrambleList || '<p class="hint">No words available.</p>'}
+      <div class="block-title" style="margin-top:14px;">Practice writing each word 5 times.</div>
+      ${traceList || ''}
+    </div>`;
+  return pageDiv(html, 'word-page', `var(--word-font)`);
+}
+
+function renderSentencePage(unitTitle, blocks, dayNum){
+  const items = blocks.map((b) => {
+    const qTokens = scrambleSentence(b.question);
+    const ansRows = b.answers.map(a => {
+      const aTokens = scrambleSentence(a);
+      return `<div class="a-row">
+        <div class="a-toks">${tokBoxes(aTokens)}</div>
+        <div class="inline-line"></div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="qa-block">
+        <div class="q-row">
+          <div class="q-toks">${tokBoxes(qTokens)}</div>
+          <div class="inline-line"></div>
+        </div>
+        ${ansRows}
+      </div>`;
+  }).join('');
+
+  const html = `
+    <div class="ws sentence">
+      <div class="page-top-row">
+        <div>
+          <p class="p-title">${escapeHtml(unitTitle)}</p>
+          <p class="p-sub">Sentence Order</p>
+        </div>
+        <div class="day-label">Day ${dayNum}</div>
+      </div>
+      <hr class="divider">
+      <div class="block-title">Put the words in the correct order to make sentences/questions.</div>
+      ${items || '<p class="hint">No sentences available.</p>'}
+    </div>`;
+  return pageDiv(html, 'sentence-page', `var(--sentence-font)`);
+}
+
+function renderReviewPage(unitNames, units, dayNum){
+  const allWords = [];
+  const allBlocks = [];
+  units.forEach(u => {
+    allWords.push(...u.words);
+    allBlocks.push(...u.blocks);
+  });
+
+  // 리뷰 페이퍼 분량 조절 및 단어 5회 쓰기 삭제 반영
+  const mixedWords = shuffle(allWords).slice(0, 8);
+  const mixedBlocks = shuffle(allBlocks).slice(0, 5);
+
+  const wordList = mixedWords.map((w,i) => `
+      <div class="word-item">
+        <span class="idx">${i+1}</span>
+        ${tokBoxes(scrambleItem(w), 'letters')}
+        <span class="ans-line"></span>
+      </div>`).join('');
+
+  const sentList = mixedBlocks.map((b,i) => {
+    const qTokens = scrambleSentence(b.question);
+    const ansHtml = b.answers.length > 0 ? `
+      <div class="a-row">
+        <div class="a-toks">${tokBoxes(scrambleSentence(b.answers[0]))}</div>
+        <div class="inline-line"></div>
+      </div>` : '';
+    return `
+      <div class="qa-block">
+        <div class="q-row">
+          <span class="idx">${i+1}</span>
+          <div class="q-toks">${tokBoxes(qTokens)}</div>
+          <div class="inline-line"></div>
+        </div>
+        ${ansHtml}
+      </div>`;
+  }).join('');
+
+  const html = `
+    <div class="ws review">
+      <div class="page-top-row">
+        <div>
+          <p class="p-title">${unitNames.join(' &amp; ')}</p>
+          <p class="p-sub">Mixed Review</p>
+        </div>
+        <div class="day-label">Day ${dayNum}</div>
+      </div>
+      <hr class="divider">
+      <div class="block-title">Part A. Unscramble each word.</div>
+      ${wordList || '<p class="hint">No words.</p>'}
+      <div class="block-title" style="margin-top:14px;">Part B. Put the words in order.</div>
+      ${sentList || '<p class="hint">No sentences.</p>'}
+    </div>`;
+  return pageDiv(html, 'review-page', `var(--review-font)`);
+}
+
+/* ===================== ASSEMBLE & RENDER ===================== */
+function buildAllPages(){
+  const pages = [];
+  pages.push(renderCover());
+
+  const sets = [];
+  for(let i=0; i<state.units.length; i+=2){
+    sets.push(state.units.slice(i, i+2));
+  }
+  const worksheetPageCount = sets.reduce((sum,set) => sum + (set.length===2 ? 5 : 2), 0);
+  pages.push(renderGuide(worksheetPageCount || 0));
+
+  let dayCounter = 1;
+  sets.forEach((set, setIdx) => {
+    const u1Num = setIdx * 2 + 1;
+    const u2Num = setIdx * 2 + 2;
+
+    if(set.length === 2){
+      const [a, b] = set;
+      const titleA = `Unit ${u1Num}. ${a.title}`;
+      const titleB = `Unit ${u2Num}. ${b.title}`;
+
+      pages.push(renderWordPage(titleA, a.words, dayCounter++));
+      pages.push(renderSentencePage(titleA, a.blocks, dayCounter++));
+      pages.push(renderWordPage(titleB, b.words, dayCounter++));
+      pages.push(renderSentencePage(titleB, b.blocks, dayCounter++));
+      pages.push(renderReviewPage([`Unit ${u1Num}`, `Unit ${u2Num}`], [a, b], dayCounter++));
+    } else {
+      const [a] = set;
+      const titleA = `Unit ${u1Num}. ${a.title}`;
+      pages.push(renderWordPage(titleA, a.words, dayCounter++));
+      pages.push(renderSentencePage(titleA, a.blocks, dayCounter++));
+    }
+  });
+  return pages;
+}
+
+function applyFontVars(){
+  const r = document.documentElement.style;
+  r.setProperty('--cover-font', state.fontSizes.cover + 'px');
+  r.setProperty('--guide-font', state.fontSizes.guide + 'px');
+  r.setProperty('--word-font', state.fontSizes.word + 'px');
+  r.setProperty('--sentence-font', state.fontSizes.sentence + 'px');
+  r.setProperty('--review-font', state.fontSizes.review + 'px');
+}
+
+function renderAll(){
+  applyFontVars();
+  const preview = document.getElementById('preview');
+  if(state.units.length === 0){
+    preview.innerHTML = '<div class="empty-state">왼쪽에서 반 이름과 시작 날짜를 입력하고<br>엑셀 파일을 업로드하면 워크시트가 이곳에 자동으로 만들어집니다.</div>';
+    document.getElementById('pageCount').textContent = '';
+    return;
+  }
+  const pages = buildAllPages();
+  preview.innerHTML = pages.join('');
+  document.getElementById('pageCount').textContent = `총 ${pages.length}페이지`;
+}
+
+/* ===================== EXPORT TO WORD ===================== */
+function exportWord(){
+  if(state.units.length === 0){ alert('먼저 엑셀 파일을 업로드해주세요.'); return; }
+  const pages = buildAllPages();
+  const styleCss = `
+    body{font-family:'Malgun Gothic',Arial,sans-serif;color:#1E2A38;}
+    .page{width:210mm;height:297mm;padding:14mm 16mm;page-break-after:always;overflow:hidden;}
+    .page-top-row{margin-bottom:6px;}
+    .p-title{font-weight:700;font-size:18px;margin:0 0 2px;float:left;}
+    .p-sub{font-size:12px;color:#8A8471;margin:0 0 10px;clear:left;}
+    .day-label{font-weight:700;font-size:13px;color:#2F8F86;float:right;}
+    .divider{border:none;border-top:2px solid #2F8F86;margin:6px 0 12px;clear:both;}
+    .cover{text-align:center;padding-top:100px;}
+    .cover h1{font-size:30px;margin:0 0 34px;}
+    .kicker{font-size:12px;letter-spacing:2px;color:#2F8F86;font-weight:700;margin-bottom:12px;}
+    .line-row{margin:14px auto;width:70%;}
+    .line-row .cap{font-weight:700;display:inline-block;width:90px;text-align:right;margin-right:14px;}
+    .line-row .blank{display:inline-block;border-bottom:1.5px solid #1E2A38;width:60%;padding-bottom:3px;}
+    .notice-box{border:1.5px solid #1E2A38;border-radius:6px;padding:12px 14px;margin-top:20px;}
+    .notice-extra{margin-top:12px;padding:12px 14px;border-left:4px solid #F2B441;background:#FFF8E9;white-space:pre-wrap;}
+    table.cal{width:100%;border-collapse:collapse;margin-bottom:16px;}
+    table.cal caption{text-align:left;font-weight:700;margin-bottom:6px;color:#2F8F86;}
+    table.cal th,table.cal td{border:1px solid #D8D3C6;text-align:center;padding:5px;height:36px;}
+    table.cal th{background:#F3F1EA;font-size:11px;color:#8A8471;}
+    table.cal .we{background:#F6F5F1;}
+    table.cal .day-tag{display:block;font-weight:700;color:#2F8F86;font-size:11px;}
+    .block-title{font-weight:700;color:#2F8F86;margin:10px 0 6px;}
+    .word-item{margin-bottom:4px;}
+    .tok{display:inline-block;border:1.5px solid #1E2A38;border-radius:4px;padding:2px 4px;margin-right:2px;font-weight:700;}
+    .ans-line{display:inline-block;border-bottom:1.4px solid #B7B09E;width:120px;margin-left:10px;}
+    .trace-item{margin-bottom:8px;}
+    .trace-lines{margin-left:20px;margin-top:2px;}
+    .trace-cell{display:inline-block;width:70px;height:18px;border-bottom:1.4px solid #B7B09E;margin-right:8px;}
+    .word-bank{background:#F8F6F0;border:1px solid #D8D3C6;padding:6px 10px;margin-bottom:8px;font-size:11px;}
+    .word-bank-title{font-weight:700;color:#2F8F86;margin-bottom:2px;}
+    .qa-block{margin-bottom:8px;}
+    .q-row, .a-row{margin-bottom:6px;}
+    .inline-line{display:inline-block;border-bottom:1.4px solid #B7B09E;width:180px;height:14px;margin-left:10px;}
+  `;
+  const fs = state.fontSizes;
+  const perPageFont = `
+    .cover-page{font-size:${fs.cover}px;} .guide-page{font-size:${fs.guide}px;}
+    .word-page{font-size:${fs.word}px;} .sentence-page{font-size:${fs.sentence}px;} .review-page{font-size:${fs.review}px;}
+  `;
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8">
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+  <style>
+  @page { size: 210mm 297mm; margin: 0; }
+  ${styleCss} ${perPageFont}
+  </style></head>
+  <body>${pages.join('')}</body></html>`;
+
+  const blob = new Blob(['\ufeff', doc], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const cname = document.getElementById('className').value.trim() || 'worksheet';
+  a.href = url;
+  a.download = `English_Worksheet_${cname}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== EVENTS ===================== */
+const statusEl = document.getElementById('status');
+function setStatus(msg, cls){
+  statusEl.textContent = msg;
+  statusEl.className = 'status' + (cls ? ' '+cls : '');
+}
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  setStatus('파일을 읽는 중...');
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try{
+      const units = parseWorkbook(ev.target.result);
+      if(units.length === 0){ setStatus('시트에서 내용을 찾지 못했습니다.', 'err'); return; }
+      state.units = units;
+      setStatus(`${units.length}개 유닛(시트)을 불러왔습니다.`, 'ok');
+      renderAll();
+    }catch(err){
+      console.error(err);
+      setStatus('엑셀 파일을 읽는 중 오류가 발생했습니다: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+['className','startDate','extraNotice'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderAll);
+});
+
+[['fs-cover','cover'],['fs-guide','guide'],['fs-word','word'],['fs-sentence','sentence'],['fs-review','review']].forEach(([elId,key]) => {
+  const el = document.getElementById(elId);
+  const val = document.getElementById(elId+'-val');
+  el.addEventListener('input', () => {
+    val.textContent = el.value;
+    state.fontSizes[key] = parseInt(el.value, 10);
+    applyFontVars();
+  });
+});
+
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
+document.getElementById('btnExport').addEventListener('click', exportWord);
+</script>
+</body>
+</html>
